@@ -1,0 +1,88 @@
+Code:
+#include <reg51.h>
+#include <stdio.h>
+#include <string.h>
+#define PASSWORD_LENGTH 4
+#define MAX_ATTEMPTS 3
+sbit ROW1 = P2^0;
+sbit ROW2 = P2^1;
+sbit ROW3 = P2^2;
+sbit ROW4 = P2^3;
+sbit COL1 = P2^4;
+sbit COL2 = P2^5;
+sbit COL3 = P2^6;
+sbit COL4 = P2^7;
+sbit MOTOR_PIN1 = P1^0;
+sbit MOTOR_PIN2 = P1^1;
+char keys[4][4] = {
+{'1', '2', '3', 'A'},
+{'4', '5', '6', 'B'},
+{'7', '8', '9', 'C'},
+{'*', '0', '#', 'D'}
+};
+char password[PASSWORD_LENGTH + 1] = "1234";
+char input[PASSWORD_LENGTH + 1];
+unsigned int attempts = 0;
+void delay_ms(unsigned int ms) {
+unsigned int i, j;
+for (i = 0; i < ms; i++)
+for (j = 0; j < 1275; j++);
+}
+void init_keypad() {
+ROW1 = 1; ROW2 = 1; ROW3 = 1; ROW4 = 1;
+COL1 = 1; COL2 = 1; COL3 = 1; COL4 = 1;
+}
+char read_keypad() {
+unsigned char row, col;
+init_keypad();
+for (col = 0; col < 4; col++) {
+ROW1 = 1; ROW2 = 1; ROW3 = 1; ROW4 = 1;
+COL1 = 1; COL2 = 1; COL3 = 1; COL4 = 1;
+COL1 = 0; COL2 = 0; COL3 = 0; COL4 = 0;
+COL1 = 1 << col;
+for (row = 0; row < 4; row++) {
+if (!(P2 & (1 << row))) {
+return keys[row][col];
+}
+}
+}
+return '\0';
+}
+void activate_motor() {
+MOTOR_PIN1 = 1;
+MOTOR_PIN2 = 0;
+delay_ms(3000); // Run motor for 3 seconds
+MOTOR_PIN1 = 0;
+MOTOR_PIN2 = 0;
+}
+void main() {
+char key;
+unsigned char i = 0;
+MOTOR_PIN1 = 0;
+MOTOR_PIN2 = 0;
+while (1) {
+key = read_keypad();
+if (key != '\0' && i < PASSWORD_LENGTH) {
+input[i++] = key;
+delay_ms(200); // Debouncing
+}
+if (i == PASSWORD_LENGTH) {
+input[i] = '\0'; // Null terminate the string
+if (strcmp(input, password) == 0) {
+// Correct password entered, activate motor
+activate_motor();
+// Reset attempt count
+attempts = 0;
+} else {
+// Incorrect password entered
+attempts++;
+if (attempts >= MAX_ATTEMPTS) {
+// Maximum attempts reached, perform action (e.g., sound alarm)
+}
+}
+// Reset input buffer
+memset(input, 0, sizeof(input));
+i = 0;
+}
+}
+}
